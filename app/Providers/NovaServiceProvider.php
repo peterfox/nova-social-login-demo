@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\SocialLoginController;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Laravel\Nova\Cards\Help;
 use Laravel\Nova\Nova;
 use Laravel\Nova\NovaApplicationServiceProvider;
@@ -26,10 +28,28 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
      */
     protected function routes()
     {
-        Nova::routes()
-                ->withAuthenticationRoutes()
-                ->withPasswordResetRoutes()
-                ->register();
+        Nova::routes();
+
+        Route::domain(config('nova.domain', null))
+            ->middleware(['web'])
+            ->as('nova.')
+            ->prefix(Nova::path())
+            ->group(function () {
+                Route::get('/login', 'Laravel\Nova\Http\Controllers\LoginController@showLoginForm');
+                Route::get('/login/google', SocialLoginController::class . '@redirectToGoogle')
+                    ->name('login.google');
+                Route::get('/google/callback', SocialLoginController::class . '@processGoogleCallback')
+                    ->name('login.callback');
+            });
+
+        Route::namespace('Laravel\Nova\Http\Controllers')
+            ->domain(config('nova.domain', null))
+            ->middleware(config('nova.middleware', []))
+            ->as('nova.')
+            ->prefix(Nova::path())
+            ->group(function () {
+                Route::get('/logout', 'LoginController@logout')->name('logout');
+            });
     }
 
     /**
